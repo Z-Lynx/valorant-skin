@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Valorant Skins - Level & Chroma</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background: #f4f4f4;
+      }
+      h1 {
+        text-align: center;
+      }
+      #search-bar,
+      #category-filter {
+        display: block;
+        margin: 10px auto;
+        padding: 10px;
+        font-size: 16px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+      }
+      #search-bar {
+        width: 300px;
+      }
+      #category-filter {
+        width: 320px;
+      }
+
+      #skins-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .skin {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .skin h3 {
+        margin-top: 0;
+        font-size: 18px;
+        text-align: center;
+      }
+
+      .level-container {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+      }
+
+      .level-container img {
+        width: 100%;
+        max-width: 250px;
+        height: auto;
+        border-radius: 8px;
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+      }
+
+      .level-buttons {
+        margin-top: 8px;
+        display: flex;
+        gap: 10px;
+      }
+
+      .level-buttons button,
+      .chroma-buttons button {
+        padding: 5px 10px;
+        border-radius: 6px;
+        border: none;
+        background: #007bff;
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s;
+      }
+
+      .level-buttons button:hover,
+      .chroma-buttons button:hover {
+        background: #0056b3;
+      }
+
+      .chroma-section {
+        margin-top: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .swatches {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        justify-content: center;
+      }
+
+      .swatch {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        background-size: cover;
+        background-position: center;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Valorant Skins - Switch Level + Chromas</h1>
+    <input type="text" id="search-bar" placeholder="Search skins by name..." />
+    <select id="category-filter">
+      <option value="all">All Weapon Types</option>
+    </select>
+
+    <div id="skins-container"></div>
+
+    <script>
+      let allSkins = [];
+      const weaponCountMap = new Map();
+
+      async function fetchAllSkins() {
+        const response = await fetch(
+          "https://valorant-api.com/v1/weapons/skins"
+        );
+        const data = await response.json();
+        allSkins = data.data;
+
+        countWeaponCategories();
+        populateCategoryFilter();
+        renderSkins(allSkins);
+      }
+
+      function getWeaponTypeFromName(name) {
+        const parts = name.trim().split(" ");
+        return parts.length > 1 ? parts[parts.length - 1] : null;
+      }
+
+      function countWeaponCategories() {
+        allSkins.forEach((skin) => {
+          const weaponType = getWeaponTypeFromName(skin.displayName);
+          if (!weaponType) return;
+          weaponCountMap.set(
+            weaponType,
+            (weaponCountMap.get(weaponType) || 0) + 1
+          );
+        });
+      }
+
+      function populateCategoryFilter() {
+        const filter = document.getElementById("category-filter");
+        Array.from(weaponCountMap.entries())
+          .filter(([_, count]) => count >= 2)
+          .sort()
+          .forEach(([category, _]) => {
+            const option = document.createElement("option");
+            option.value = category;
+            option.textContent = category;
+            filter.appendChild(option);
+          });
+      }
+
+      function renderSkins(skins) {
+        const container = document.getElementById("skins-container");
+        container.innerHTML = "";
+
+        skins.forEach((skin) => {
+          const validLevels = skin.levels.filter(
+            (level) => level.displayIcon !== null
+          );
+          if (validLevels.length === 0) return;
+
+          const skinDiv = document.createElement("div");
+          skinDiv.className = "skin";
+
+          const title = document.createElement("h3");
+          title.innerText = skin.displayName;
+          skinDiv.appendChild(title);
+
+          const levelContainer = document.createElement("div");
+          levelContainer.className = "level-container";
+
+          const levelImg = document.createElement("img");
+          levelImg.src = validLevels[0].displayIcon;
+          levelImg.alt = `${skin.displayName} - Level 1`;
+          levelContainer.appendChild(levelImg);
+
+          // Level Buttons (if >1)
+          if (validLevels.length > 1) {
+            const buttonContainer = document.createElement("div");
+            buttonContainer.className = "level-buttons";
+
+            const prevBtn = document.createElement("button");
+            prevBtn.innerText = "Prev";
+            const nextBtn = document.createElement("button");
+            nextBtn.innerText = "Next";
+
+            let currentLevel = 0;
+
+            prevBtn.addEventListener("click", () => {
+              currentLevel =
+                (currentLevel - 1 + validLevels.length) % validLevels.length;
+              levelImg.src = validLevels[currentLevel].displayIcon;
+              levelImg.alt = `${skin.displayName} - Level ${currentLevel + 1}`;
+            });
+
+            nextBtn.addEventListener("click", () => {
+              currentLevel = (currentLevel + 1) % validLevels.length;
+              levelImg.src = validLevels[currentLevel].displayIcon;
+              levelImg.alt = `${skin.displayName} - Level ${currentLevel + 1}`;
+            });
+
+            buttonContainer.appendChild(prevBtn);
+            buttonContainer.appendChild(nextBtn);
+            levelContainer.appendChild(buttonContainer);
+          }
+
+          skinDiv.appendChild(levelContainer);
+
+          // Chromas section
+          if (skin.chromas && skin.chromas.length > 0) {
+            const chromaSection = document.createElement("div");
+            chromaSection.className = "chroma-section";
+
+            const swatchContainer = document.createElement("div");
+            swatchContainer.className = "swatches";
+
+            let hasSwatch = false;
+
+            skin.chromas.forEach((chroma) => {
+              if (chroma.swatch && chroma.fullRender) {
+                hasSwatch = true;
+
+                const swatchBtn = document.createElement("button");
+                swatchBtn.className = "swatch";
+                swatchBtn.style.backgroundImage = `url(${chroma.swatch})`;
+                swatchBtn.title = chroma.displayName || "Chroma";
+
+                swatchBtn.onclick = () => {
+                  levelImg.src = chroma.fullRender;
+                  levelImg.alt = `${skin.displayName} - Chroma`;
+                };
+
+                swatchContainer.appendChild(swatchBtn);
+              }
+            });
+
+            if (hasSwatch) chromaSection.appendChild(swatchContainer);
+
+            // Video button (first chroma with video)
+            const chromaWithVideo = skin.chromas.find((c) => c.streamedVideo);
+            if (chromaWithVideo) {
+              const videoBtn = document.createElement("button");
+              videoBtn.innerText = "Watch Video";
+              videoBtn.onclick = () =>
+                window.open(chromaWithVideo.streamedVideo, "_blank");
+              chromaSection.appendChild(videoBtn);
+            }
+
+            skinDiv.appendChild(chromaSection);
+          }
+
+          container.appendChild(skinDiv);
+        });
+      }
+
+      document
+        .getElementById("search-bar")
+        .addEventListener("input", () => filterAndRender());
+      document
+        .getElementById("category-filter")
+        .addEventListener("change", () => filterAndRender());
+
+      function filterAndRender() {
+        const query = document.getElementById("search-bar").value.toLowerCase();
+        const selectedCategory =
+          document.getElementById("category-filter").value;
+
+        const filtered = allSkins.filter((skin) => {
+          const nameMatch = skin.displayName.toLowerCase().includes(query);
+          const weaponType = getWeaponTypeFromName(skin.displayName);
+          const categoryMatch =
+            selectedCategory === "all" || weaponType === selectedCategory;
+          return nameMatch && categoryMatch;
+        });
+
+        renderSkins(filtered);
+      }
+
+      fetchAllSkins();
+    </script>
+  </body>
+</html>
